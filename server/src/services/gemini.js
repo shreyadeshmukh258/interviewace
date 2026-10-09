@@ -1,7 +1,11 @@
 import { ApiError } from '../utils/ApiError.js';
 
-const endpoint = () =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-2.0-flash'}:generateContent`;
+const CANDIDATE_MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-3-flash-preview',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',
+].filter(Boolean);
 
 const parseJson = (text) => {
   const clean = String(text || '').replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -9,29 +13,47 @@ const parseJson = (text) => {
 };
 
 async function callGemini(prompt, { temperature = 0.6, retries = 1 } = {}) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(endpoint(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature, responseMimeType: 'application/json' },
-        }),
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!res.ok) {
-        if (res.status === 429) throw new ApiError(429, 'AI service is busy. Try again in a moment');
-        throw new Error(`Gemini ${res.status}`);
-      }
-      const data = await res.json();
-      return parseJson(data?.candidates?.[0]?.content?.parts?.[0]?.text);
-    } catch (err) {
-      if (err instanceof ApiError || attempt === retries) {
-        throw err instanceof ApiError ? err : new ApiError(502, 'The AI service could not complete this request. Please try again');
+  const models = [...new Set(CANDIDATE_MODELS)];
+  let lastError;
+
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { temperature, responseMimeType: 'application/json' },
+          }),
+          signal: AbortSignal.timeout(45000),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.warn(`Gemini [${model}] status ${res.status}:`, errData?.error?.message || res.statusText);
+          if (res.status === 429) throw new ApiError(429, 'AI service is busy. Try again in a moment');
+          if (res.status === 404 || res.status === 503) {
+            lastError = new Error(`Gemini ${res.status}: ${errData?.error?.message}`);
+            break; // Try next fallback model
+          }
+          throw new Error(`Gemini ${res.status}: ${errData?.error?.message || res.statusText}`);
+        }
+
+        const data = await res.json();
+        return parseJson(data?.candidates?.[0]?.content?.parts?.[0]?.text);
+      } catch (err) {
+        lastError = err;
+        if (err instanceof ApiError) throw err;
+        if (attempt === retries) break;
       }
     }
   }
+
+  throw lastError instanceof ApiError
+    ? lastError
+    : new ApiError(502, 'The AI service could not complete this request. Please try again');
 }
 
 const clampScore = (n) => Math.max(0, Math.min(10, Math.round(Number(n) * 10) / 10 || 0));
