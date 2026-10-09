@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-surface font-sans text-ink antialiased; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
+  ::selection { background: #E0E7FF; }
+}
+
+@layer components {
+  .glass { @apply rounded-xl2 border border-white/70 bg-white/75 shadow-glass backdrop-blur-xl; }
+  .card { @apply rounded-xl2 border border-slate-200/70 bg-white shadow-glass; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[.98]; }
+  .btn-primary { @apply btn bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:brightness-110; }
+  .btn-ghost { @apply btn border border-slate-200 bg-white text-ink hover:border-primary/40 hover:bg-primary-50; }
+  .input { @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-ink-mute focus:border-primary focus:ring-4 focus:ring-primary/10; }
+  .chip { @apply inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary; }
+  .aurora { background: radial-gradient(60% 50% at 20% 10%, #E0E7FF 0%, transparent 70%), radial-gradient(50% 45% at 85% 5%, #CFFAFE 0%, transparent 70%), radial-gradient(45% 40% at 60% 40%, #EDE9FE 0%, transparent 70%), #fff; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
