@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: `${import.meta.env.VITE_API_URL || ''}/api`, timeout: 60000 });
+const getApiBaseUrl = () => {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+  if (!envUrl) return '/api';
+  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+};
+
+const api = axios.create({ baseURL: getApiBaseUrl(), timeout: 60000 });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('ia_token');
@@ -11,8 +17,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {
-    const message = err.response?.data?.message || (err.code === 'ECONNABORTED' ? 'The request timed out' : 'Network error. Check your connection');
-    if (err.response?.status === 401 && localStorage.getItem('ia_token') && !err.config.url.includes('/auth/')) {
+    const message =
+      err.response?.data?.message ||
+      (err.code === 'ECONNABORTED'
+        ? 'The request timed out. The server may be waking up, please try again.'
+        : 'Network error. Check your connection');
+    if (err.response?.status === 401 && localStorage.getItem('ia_token') && !err.config?.url?.includes('/auth/')) {
       localStorage.removeItem('ia_token');
       window.dispatchEvent(new Event('ia:logout'));
     }

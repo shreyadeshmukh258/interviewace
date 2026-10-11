@@ -19,10 +19,39 @@ if (missing.length) {
   process.exit(1);
 }
 
+const configuredOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((url) => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 const app = express();
 app.set('trust proxy', 1);
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL.split(','), credentials: true }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      const isAllowed =
+        configuredOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith('.vercel.app') ||
+        cleanOrigin.endsWith('.onrender.com') ||
+        cleanOrigin === 'http://localhost:5173' ||
+        cleanOrigin === 'http://localhost:3000';
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      console.warn(`[CORS] Disallowed origin: ${origin}`);
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
