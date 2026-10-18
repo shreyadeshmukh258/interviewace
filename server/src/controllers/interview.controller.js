@@ -6,13 +6,14 @@ import { generateQuestions, evaluateInterview } from '../services/gemini.js';
 
 export const generate = asyncHandler(async (req, res) => {
   const { role, difficulty, type } = req.body;
+  const latestResume = await Resume.findOne({ userId: req.user._id }).sort({ uploadDate: -1 });
   let skills = req.body.skills;
   if (!Array.isArray(skills) || !skills.length) {
-    const latest = await Resume.findOne({ userId: req.user._id }).sort({ uploadDate: -1 });
-    skills = latest?.extractedSkills || [];
+    skills = latestResume?.extractedSkills || [];
   }
   skills = skills.slice(0, 25);
-  const questions = await generateQuestions({ role, skills, difficulty, type });
+  const resumeSummary = req.body.resumeSummary || latestResume?.summary || '';
+  const questions = await generateQuestions({ role, skills, difficulty, type, resumeSummary });
   const interview = await Interview.create({ userId: req.user._id, role, difficulty, type, skills, questions });
   res.status(201).json({ success: true, interview });
 });

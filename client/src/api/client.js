@@ -2,8 +2,14 @@ import axios from 'axios';
 
 const getApiBaseUrl = () => {
   const envUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-  if (!envUrl) return '/api';
-  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+  if (envUrl) {
+    return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+  }
+  // In production (Vercel), default to the live Render backend if VITE_API_URL wasn't set
+  if (import.meta.env.PROD) {
+    return 'https://interviewaceai-h25p.onrender.com/api';
+  }
+  return '/api';
 };
 
 const api = axios.create({ baseURL: getApiBaseUrl(), timeout: 60000 });

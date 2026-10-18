@@ -74,18 +74,31 @@ RESUME:
   return { skills, summary: String(data.summary || '').slice(0, 300) };
 }
 
-export async function generateQuestions({ role, skills, difficulty, type }) {
+export async function generateQuestions({ role, skills, difficulty, type, resumeSummary = '' }) {
   const mix =
     type === 'Mixed'
       ? 'a balanced mix of Technical, HR and Behavioral questions'
       : `${type} questions only`;
+  const resumeContext = resumeSummary
+    ? `Candidate Resume Profile / Background: "${resumeSummary}".`
+    : '';
   const data = await callGemini(
-    `You are a senior interviewer. Create exactly 10 ${difficulty}-level interview questions for a "${role}" candidate.
-Candidate skills: ${skills.length ? skills.join(', ') : 'not provided'}.
-Interview type: ${mix}.
-Return JSON only: {"questions":[{"text": string, "category": "Technical"|"HR"|"Behavioral", "skill": string}]}
-Rules: each question is specific and answerable in 2-4 minutes; "skill" is the main skill or topic it tests (1-3 words); no duplicates; order from easier to harder.`,
-    { temperature: 0.8 }
+    `You are a senior hiring manager and tech interviewer conducting a live, realistic job interview for a "${role}" position.
+Create exactly 10 ${difficulty}-level interview questions tailored specifically for this candidate based on their skills and resume background.
+Candidate skills from resume: ${skills.length ? skills.join(', ') : 'general industry skills'}.
+${resumeContext}
+Interview format: ${mix}.
+
+Return JSON only:
+{"questions":[{"text": string, "category": "Technical"|"HR"|"Behavioral", "skill": string}]}
+
+Rules:
+- Formulate questions as a real interviewer would ask them aloud to the candidate (e.g. "Can you explain how you worked with [Skill]...", "In your past projects, how did you handle...", "Tell me about a time when...").
+- Ground several questions directly in the candidate's actual claimed skills and background.
+- Each question must be clear, conversational, and answerable verbally or in writing within 2-4 minutes.
+- "skill": the primary skill or concept being evaluated (1-3 words).
+- No duplicates; order from warm-up/foundational to deeper scenario-based or behavioral questions.`,
+    { temperature: 0.7 }
   );
   const questions = (data.questions || [])
     .filter((q) => q?.text)

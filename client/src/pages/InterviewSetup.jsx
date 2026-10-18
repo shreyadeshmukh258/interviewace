@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Code2, Users, HeartHandshake, Shuffle, Wand2 } from 'lucide-react';
+import { Code2, Users, HeartHandshake, Shuffle, Wand2, FileText, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/client';
 import { PageHeader, Field, Spinner } from '../components/ui';
@@ -19,17 +19,30 @@ export default function InterviewSetup() {
   const [difficulty, setDifficulty] = useState('Medium');
   const [type, setType] = useState('Technical');
   const [skills, setSkills] = useState([]);
+  const [resume, setResume] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.get('/resume').then((r) => setSkills(r.resumes[0]?.extractedSkills || [])).catch(() => {});
+    api.get('/resume').then((r) => {
+      const latest = r.resumes?.[0];
+      if (latest) {
+        setResume(latest);
+        if (latest.extractedSkills?.length) setSkills(latest.extractedSkills);
+      }
+    }).catch(() => {});
   }, []);
 
   const generate = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await api.post('/interview/generate', { role, difficulty, type, skills });
+      const r = await api.post('/interview/generate', {
+        role,
+        difficulty,
+        type,
+        skills,
+        resumeSummary: resume?.summary || '',
+      });
       navigate(`/interview/${r.interview._id}`);
     } catch (err) { toast.error(err.message); setBusy(false); }
   };
@@ -67,7 +80,23 @@ export default function InterviewSetup() {
         </div>
 
         <div className="rounded-2xl bg-slate-50 p-4">
-          <div className="text-sm font-semibold">Skills used for your questions</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold">Skills used for your questions</div>
+            {resume && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Tailored to your resume
+              </span>
+            )}
+          </div>
+          {resume && (
+            <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-ink shadow-sm">
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1 truncate">
+                <span className="font-semibold text-primary">{resume.fileName}</span>
+                {resume.summary && <span className="ml-2 truncate text-ink-mute">({resume.summary})</span>}
+              </div>
+            </div>
+          )}
           {skills.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {skills.slice(0, 14).map((s) => <button type="button" key={s} onClick={() => setSkills(skills.filter((x) => x !== s))} title="Remove skill" className="chip hover:bg-red-50 hover:text-danger">{s} ×</button>)}

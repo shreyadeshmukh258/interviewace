@@ -37,11 +37,11 @@ app.use(
       if (!origin) return callback(null, true);
       const cleanOrigin = origin.replace(/\/+$/, '');
       const isAllowed =
+        process.env.CLIENT_URL === '*' ||
         configuredOrigins.includes(cleanOrigin) ||
         cleanOrigin.endsWith('.vercel.app') ||
         cleanOrigin.endsWith('.onrender.com') ||
-        cleanOrigin === 'http://localhost:5173' ||
-        cleanOrigin === 'http://localhost:3000';
+        cleanOrigin.includes('localhost');
 
       if (isAllowed) {
         return callback(null, true);
