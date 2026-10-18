@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="client/public/logo.png" alt="InterviewAce AI Logo" width="220" />
+</p>
+
 # InterviewAce AI
 
 AI mock-interview platform: upload a resume, generate role-specific questions with Gemini, answer under a timer, get scored feedback, and track progress.
